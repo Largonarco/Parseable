@@ -41,8 +41,8 @@
           "default": "/data"
         },
         "P_STAGING_DIR": {
-          "description": "Staging directory for write-ahead buffer (must be inside the mounted volume)",
-          "default": "/data/staging"
+          "description": "Staging directory for write-ahead buffer. Uses /tmp so it is always clean on container restart — avoids the 'stale data' error when the service restarts.",
+          "default": "/tmp/parseable-staging"
         },
         "P_ADDR": {
           "description": "Listen address for the Parseable HTTP server",

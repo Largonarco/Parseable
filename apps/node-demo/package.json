@@ -10,7 +10,7 @@
   "dependencies": {
     "express": "^4.18.2"
   },
-  "optionalDependencies": {
+  "devDependencies": {
     "winston-transport": "^4.7.1"
   },
   "engines": {
