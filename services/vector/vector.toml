@@ -54,8 +54,8 @@ if !exists(.timestamp) {
 '''
 
 # HTTP Sink - ship to Parseable with batching and compression
-# encoding.codec = "json_array" serializes the batch as a JSON array [...],
-# which is exactly what Parseable's /api/v1/ingest endpoint expects.
+# codec = "json" sends each event as a single JSON object per request,
+# which Parseable's /api/v1/ingest endpoint accepts natively.
 [sinks.parseable]
 type = "http"
 method = "post"
@@ -65,7 +65,7 @@ uri = "${PARSEABLE_URL}/api/v1/ingest"
 compression = "gzip"
 
 [sinks.parseable.encoding]
-codec = "json_array"
+codec = "json"
 
 [sinks.parseable.batch]
 max_bytes = 10485760
