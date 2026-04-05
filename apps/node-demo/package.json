@@ -10,9 +10,6 @@
   "dependencies": {
     "express": "^4.18.2"
   },
-  "devDependencies": {
-    "winston-transport": "^4.7.1"
-  },
   "engines": {
     "node": ">=18"
   }
