@@ -1,0 +1,173 @@
+{
+  "$schema": "https://railway.app/railway.schema.json",
+  "name": "Parseable Observability Stack",
+  "description": "Persistent, searchable logs for Railway apps. Parseable + Vector pipeline with Node.js and Python demo apps. Works in 5 minutes.",
+  "services": [
+    {
+      "name": "Parseable",
+      "description": "Rust-based observability platform — stores, indexes, and queries your logs",
+      "serviceIcon": "https://avatars.githubusercontent.com/u/96671220?s=200&v=4",
+      "serviceDirectory": "services/parseable",
+      "build": {
+        "builder": "IMAGE",
+        "image": "parseable/parseable:v2.6.5"
+      },
+      "deploy": {
+        "startCommand": "parseable local-store",
+        "healthcheckPath": "/api/v1/liveness",
+        "healthcheckTimeout": 300,
+        "restartPolicyType": "ON_FAILURE",
+        "restartPolicyMaxRetries": 3,
+        "sleepApplication": false
+      },
+      "volumes": [
+        {
+          "name": "parseable-data",
+          "mountPath": "/data"
+        }
+      ],
+      "variables": {
+        "P_USERNAME": {
+          "description": "Parseable admin username",
+          "default": "admin"
+        },
+        "P_PASSWORD": {
+          "description": "Parseable admin password — change this before going to production",
+          "generator": "secret",
+          "required": true
+        },
+        "P_FS_DIR": {
+          "description": "Directory for local log storage (must be inside the mounted volume)",
+          "default": "/data"
+        },
+        "P_STAGING_DIR": {
+          "description": "Staging directory for write-ahead buffer (must be inside the mounted volume)",
+          "default": "/data/staging"
+        },
+        "P_ADDR": {
+          "description": "Listen address for the Parseable HTTP server",
+          "default": "0.0.0.0:8000"
+        },
+        "PORT": {
+          "description": "Port Parseable listens on — must match P_ADDR. Railway's proxy routes public traffic here.",
+          "default": "8000"
+        },
+        "P_CORS": {
+          "description": "Enable CORS for the Parseable API (true/false). Keep false unless you need browser clients to query Parseable directly.",
+          "default": "false"
+        }
+      }
+    },
+    {
+      "name": "Vector",
+      "description": "High-performance log aggregator — receives log batches from your apps and forwards them to Parseable",
+      "serviceDirectory": "services/vector",
+      "build": {
+        "builder": "DOCKERFILE"
+      },
+      "deploy": {
+        "restartPolicyType": "ON_FAILURE",
+        "restartPolicyMaxRetries": 3,
+        "sleepApplication": false
+      },
+      "variables": {
+        "PARSEABLE_URL": {
+          "description": "Internal URL for the Parseable service (private network — do not change)",
+          "default": "http://parseable.railway.internal:8000"
+        },
+        "PARSEABLE_USERNAME": {
+          "description": "Parseable admin username — wired from the Parseable service automatically",
+          "linkedVariable": "Parseable.P_USERNAME"
+        },
+        "PARSEABLE_PASSWORD": {
+          "description": "Parseable admin password — wired from the Parseable service automatically",
+          "linkedVariable": "Parseable.P_PASSWORD"
+        },
+        "PARSEABLE_STREAM": {
+          "description": "Parseable stream (dataset) where all logs are written",
+          "default": "railway-logs"
+        }
+      }
+    },
+    {
+      "name": "Node Demo",
+      "description": "Express demo app — pre-wired to ship structured logs through Vector to Parseable. Hit /demo/burst?count=50 to see live logs.",
+      "serviceDirectory": "apps/node-demo",
+      "build": {
+        "builder": "NIXPACKS"
+      },
+      "deploy": {
+        "startCommand": "node src/index.js",
+        "healthcheckPath": "/health",
+        "healthcheckTimeout": 60,
+        "restartPolicyType": "ON_FAILURE",
+        "restartPolicyMaxRetries": 3,
+        "sleepApplication": false
+      },
+      "variables": {
+        "VECTOR_URL": {
+          "description": "Vector HTTP endpoint (private network — do not change)",
+          "default": "http://vector.railway.internal:9000/logs"
+        },
+        "SERVICE_NAME": {
+          "description": "Tag that identifies this service in Parseable log entries",
+          "default": "node-demo"
+        },
+        "LOG_LEVEL": {
+          "description": "Minimum log level to ship to Parseable (debug | info | warn | error)",
+          "default": "info"
+        },
+        "LOG_BATCH_SIZE": {
+          "description": "Number of log entries to buffer before flushing to Vector",
+          "default": "50"
+        },
+        "LOG_FLUSH_MS": {
+          "description": "Flush interval in milliseconds — logs are sent at least this often",
+          "default": "3000"
+        },
+        "NODE_ENV": {
+          "description": "Node.js environment",
+          "default": "production"
+        }
+      }
+    },
+    {
+      "name": "Python Demo",
+      "description": "FastAPI demo app — pre-wired to ship structured logs through Vector to Parseable. Hit /demo/burst?count=50 or /docs to see live logs.",
+      "serviceDirectory": "apps/python-demo",
+      "build": {
+        "builder": "NIXPACKS"
+      },
+      "deploy": {
+        "startCommand": "uvicorn src.main:app --host 0.0.0.0 --port $PORT",
+        "healthcheckPath": "/health",
+        "healthcheckTimeout": 60,
+        "restartPolicyType": "ON_FAILURE",
+        "restartPolicyMaxRetries": 3,
+        "sleepApplication": false
+      },
+      "variables": {
+        "VECTOR_URL": {
+          "description": "Vector HTTP endpoint (private network — do not change)",
+          "default": "http://vector.railway.internal:9000/logs"
+        },
+        "SERVICE_NAME": {
+          "description": "Tag that identifies this service in Parseable log entries",
+          "default": "python-demo"
+        },
+        "LOG_LEVEL": {
+          "description": "Minimum log level to ship to Parseable (DEBUG | INFO | WARNING | ERROR)",
+          "default": "INFO"
+        },
+        "LOG_BATCH_SIZE": {
+          "description": "Number of log entries to buffer before flushing to Vector",
+          "default": "50"
+        },
+        "LOG_FLUSH_SECS": {
+          "description": "Flush interval in seconds — logs are sent at least this often",
+          "default": "3"
+        }
+      }
+    }
+  ]
+}

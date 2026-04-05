@@ -1,0 +1,98 @@
+# Vector config for Railway - receives logs from apps and ships to Parseable
+# Apps send logs to http://vector.railway.internal:9000/
+
+[api]
+enabled = true
+address = "0.0.0.0:8686"
+
+# HTTP Source - apps POST JSON log batches here
+# framing.method = "bytes" tells Vector to treat each HTTP request body as one
+# complete chunk; decoding.codec = "json" then parses it — correctly handling
+# both a single JSON object AND a JSON array (Vector auto-expands arrays into
+# individual events).
+[sources.app_logs]
+type = "http_server"
+address = "0.0.0.0:9000"
+path = "/logs"
+strict_path = true
+
+[sources.app_logs.framing]
+method = "bytes"
+
+[sources.app_logs.decoding]
+codec = "json"
+
+# Parse and enrich the log events
+[transforms.enrich]
+type = "remap"
+inputs = ["app_logs"]
+source = '''
+# Ensure we have a message field
+if !exists(.message) {
+  if exists(.msg) {
+    .message = .msg
+    del(.msg)
+  } else {
+    .message = encode_json(.)
+  }
+}
+
+# Normalize level field
+if exists(.level) {
+  .level = downcase(string!(.level))
+} else if exists(.severity) {
+  .level = downcase(string!(.severity))
+  del(.severity)
+} else {
+  .level = "info"
+}
+
+# Add timestamp if not present
+if !exists(.timestamp) {
+  .timestamp = now()
+}
+'''
+
+# HTTP Sink - ship to Parseable with batching and compression
+# encoding.codec = "json_array" serializes the batch as a JSON array [...],
+# which is exactly what Parseable's /api/v1/ingest endpoint expects.
+[sinks.parseable]
+type = "http"
+method = "post"
+inputs = ["enrich"]
+
+uri = "${PARSEABLE_URL}/api/v1/ingest"
+compression = "gzip"
+
+[sinks.parseable.encoding]
+codec = "json_array"
+
+[sinks.parseable.batch]
+max_bytes = 10485760
+max_events = 1000
+timeout_secs = 10
+
+[sinks.parseable.auth]
+strategy = "basic"
+user = "${PARSEABLE_USERNAME}"
+password = "${PARSEABLE_PASSWORD}"
+
+[sinks.parseable.request]
+retry_attempts = 20
+retry_initial_backoff_secs = 1
+retry_max_duration_secs = 30
+
+[sinks.parseable.request.headers]
+X-P-Stream = "${PARSEABLE_STREAM}"
+Content-Type = "application/json"
+
+[sinks.parseable.buffer]
+type = "disk"
+max_size = 268435456
+when_full = "block"
+
+# Healthcheck disabled: it fires at startup before Parseable may be ready
+# (Railway cold-starts services concurrently). Railway handles service-level
+# health independently via the Parseable railway.toml healthcheckPath.
+[sinks.parseable.healthcheck]
+enabled = false

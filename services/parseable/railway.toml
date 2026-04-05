@@ -1,0 +1,15 @@
+[build]
+builder = "IMAGE"
+image = "parseable/parseable:v2.6.5"
+
+[deploy]
+startCommand = "parseable local-store"
+healthcheckPath = "/api/v1/liveness"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
+
+[deploy.environmentVariables]
+P_FS_DIR = "/data"
+P_STAGING_DIR = "/data/staging"
+P_ADDR = "0.0.0.0:8000"

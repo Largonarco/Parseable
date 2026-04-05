@@ -1,0 +1,13 @@
+[build]
+builder = "DOCKERFILE"
+
+[deploy]
+# Vector exposes two ports:
+#   9000 - HTTP source (accepts POST /logs from apps)
+#   8686 - Vector API (management/health, internal only)
+#
+# Railway's healthcheck issues a GET request, but the HTTP source on port 9000
+# only accepts POST. Removing healthcheckPath causes Railway to fall back to a
+# TCP connectivity check on the service port, which is the correct behaviour here.
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
