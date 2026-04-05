@@ -4,4 +4,4 @@ COPY vector.toml /etc/vector/vector.toml
 
 EXPOSE 9000 8686
 
-CMD ["vector", "--config", "/etc/vector/vector.toml"]
+CMD ["--config", "/etc/vector/vector.toml"]
