@@ -65,7 +65,7 @@ uri = "${PARSEABLE_URL}/api/v1/ingest"
 compression = "gzip"
 
 [sinks.parseable.encoding]
-codec = "json"
+codec = "json_array"
 
 [sinks.parseable.batch]
 max_bytes = 10485760
