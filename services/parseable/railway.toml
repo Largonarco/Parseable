@@ -3,7 +3,7 @@ builder = "IMAGE"
 image = "parseable/parseable:v2.6.5"
 
 [deploy]
-startCommand = "parseable local-store"
+startCommand = "/usr/bin/parseable local-store"
 healthcheckPath = "/api/v1/liveness"
 healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
