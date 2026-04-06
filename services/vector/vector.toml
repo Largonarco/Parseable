@@ -1,6 +1,8 @@
 # Vector config for Railway - receives logs from apps and ships to Parseable
 # Apps send logs to http://vector.railway.internal:9000/
 
+data_dir = "/var/lib/vector"
+
 [api]
 enabled = true
 address = "0.0.0.0:8686"

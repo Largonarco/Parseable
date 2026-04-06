@@ -1,0 +1,103 @@
+# ============================================================
+# Parseable Observability Stack — Local Development
+# ============================================================
+#
+# Start everything:
+#   docker compose up --build
+#
+# Endpoints:
+#   • Parseable UI     → http://localhost:8000  (admin / admin123)
+#   • Node Demo App    → http://localhost:3000
+#   • Python Demo App  → http://localhost:8001
+#
+# Generate sample logs:
+#   curl http://localhost:3000/demo/burst?count=50
+#   curl http://localhost:8001/demo/burst?count=50
+# ============================================================
+
+services:
+  # ---- Log storage + UI ----
+  parseable:
+    image: parseable/parseable:v2.6.5
+    command: parseable local-store
+    ports:
+      - "8000:8000"
+    volumes:
+      - parseable-data:/data
+    environment:
+      - P_USERNAME=admin
+      - P_PASSWORD=admin123
+      - P_FS_DIR=/data
+      - P_STAGING_DIR=/tmp/parseable-staging
+      - P_ADDR=0.0.0.0:8000
+      - PORT=8000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/liveness"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  # ---- Log aggregator ----
+  vector:
+    build:
+      context: ./services/vector
+    depends_on:
+      parseable:
+        condition: service_healthy
+    environment:
+      - PARSEABLE_URL=http://parseable:8000
+      - PARSEABLE_USERNAME=admin
+      - PARSEABLE_PASSWORD=admin123
+      - PARSEABLE_STREAM=railway-logs
+    ports:
+      - "9000:9000"
+
+  # ---- Express demo app ----
+  node-demo:
+    build:
+      context: ./apps/node-demo
+      dockerfile_inline: |
+        FROM node:20-alpine
+        WORKDIR /app
+        COPY package*.json ./
+        RUN npm ci --production
+        COPY . .
+        CMD ["node", "src/index.js"]
+    depends_on:
+      - vector
+    environment:
+      - VECTOR_URL=http://vector:9000/logs
+      - SERVICE_NAME=node-demo
+      - LOG_LEVEL=info
+      - LOG_BATCH_SIZE=50
+      - LOG_FLUSH_MS=3000
+      - NODE_ENV=production
+      - PORT=3000
+    ports:
+      - "3000:3000"
+
+  # ---- FastAPI demo app ----
+  python-demo:
+    build:
+      context: ./apps/python-demo
+      dockerfile_inline: |
+        FROM python:3.12-slim
+        WORKDIR /app
+        COPY requirements.txt .
+        RUN pip install --no-cache-dir -r requirements.txt
+        COPY . .
+        CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8001"]
+    depends_on:
+      - vector
+    environment:
+      - VECTOR_URL=http://vector:9000/logs
+      - SERVICE_NAME=python-demo
+      - LOG_LEVEL=INFO
+      - LOG_BATCH_SIZE=50
+      - LOG_FLUSH_SECS=3
+      - PORT=8001
+    ports:
+      - "8001:8001"
+
+volumes:
+  parseable-data:
