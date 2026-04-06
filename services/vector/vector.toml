@@ -88,10 +88,9 @@ retry_max_duration_secs = 30
 X-P-Stream = "${PARSEABLE_STREAM}"
 Content-Type = "application/json"
 
-[sinks.parseable.buffer]
-type = "disk"
-max_size = 268435456
-when_full = "block"
+# Buffer: use Vector defaults (memory, 500 events, block when full).
+# Explicitly setting buffer params on Vector 0.38.0 triggers a max_buffer_size
+# validation that requires >= 268435488 bytes — unnecessary for this workload.
 
 # Healthcheck disabled: it fires at startup before Parseable may be ready
 # (Railway cold-starts services concurrently). Railway handles service-level
