@@ -86,7 +86,7 @@ retry_max_duration_secs = 30
 
 [sinks.parseable.request.headers]
 X-P-Stream = "${PARSEABLE_STREAM}"
-Content-Type = "application/json"
+Content-Type = "application/x-ndjson"
 
 # Buffer: use Vector defaults (memory, 500 events, block when full).
 # Explicitly setting buffer params on Vector 0.38.0 triggers a max_buffer_size

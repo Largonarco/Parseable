@@ -58,9 +58,7 @@ class ParseableLogger {
 
     // SIGTERM: flush then exit so Railway shutdown doesn't drop buffered logs
     process.on("SIGTERM", () => {
-      this._flush()
-        .catch(() => {})
-        .finally(() => process.exit(0));
+      this._flush().catch(() => {});
     });
   }
 
@@ -87,7 +85,7 @@ class ParseableLogger {
     this._queue.push(entry);
 
     if (this._queue.length >= this.batchSize) {
-      this._flush();
+      this._flush().catch(() => {});
     }
   }
 
@@ -176,8 +174,9 @@ class ParseableLogger {
   /**
    * Returns an Express middleware that logs all HTTP requests.
    */
-  expressMiddleware() {
+  expressMiddleware({ ignorePaths = ["/health"] } = {}) {
     return (req, res, next) => {
+      if (ignorePaths.includes(req.path)) return next();
       const start = Date.now();
       res.on("finish", () => {
         this.info(`${req.method} ${req.path} ${res.statusCode}`, {

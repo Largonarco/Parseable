@@ -31,6 +31,7 @@ Your App(s)
 - **Parseable** — Rust-based observability platform. Stores logs as Parquet on a Railway Volume (or S3). Ships with a full-featured UI, SQL editor, dashboards, and alerting.
 - **Vector** — High-performance log router. Receives JSON log batches from your apps over private networking, adds batching + gzip compression, and forwards to Parseable.
 - **Node.js Demo App** — Pre-wired Express app with structured logging. Shows logs in Parseable immediately after deploy.
+- **Python Demo App** — Pre-wired FastAPI app with structured logging. Interactive docs at `/docs`, demo endpoints identical to the Node app.
 
 ---
 
@@ -84,29 +85,45 @@ SERVICE_NAME=my-service-name
 **Node.js — zero-dependency snippet** (drop at top of entry file):
 
 ```javascript
-// ── Parseable log shipping ────────────────────────────────────────────────
+// ── Parseable log shipping (drop this at top of your entry file) ──────────
 (() => {
-  const URL = process.env.VECTOR_URL || 'http://vector.railway.internal:9000/logs';
-  const SVC = process.env.SERVICE_NAME || process.env.RAILWAY_SERVICE_NAME || 'app';
+  const VECTOR_URL = process.env.VECTOR_URL || 'http://vector.railway.internal:9000/logs';
+  const SERVICE = process.env.SERVICE_NAME || process.env.RAILWAY_SERVICE_NAME || 'app';
   const ENV = process.env.RAILWAY_ENVIRONMENT_NAME || process.env.NODE_ENV || 'production';
-  const q = [];
+  const queue = [];
+  let timer;
+
   const flush = async () => {
-    if (!q.length) return;
-    const b = q.splice(0);
-    try { await fetch(URL, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(b), signal:AbortSignal.timeout(5000) }); } catch {}
+    if (!queue.length) return;
+    const batch = queue.splice(0, queue.length);
+    try {
+      await fetch(VECTOR_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(batch),
+        signal: AbortSignal.timeout(5000),
+      });
+    } catch { /* never let logging crash the app */ }
   };
-  const wrap = (lvl, orig) => (...a) => {
-    orig(...a);
-    q.push({ timestamp:new Date().toISOString(), level:lvl, message:a.map(x=>typeof x==='object'?JSON.stringify(x):x).join(' '), service:SVC, environment:ENV });
-    if (q.length>=50) flush();
+
+  const enqueue = (level, args) => {
+    const message = args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
+    queue.push({ timestamp: new Date().toISOString(), level, message, service: SERVICE, environment: ENV });
+    if (!timer) { timer = setInterval(flush, 3000); timer.unref(); }
+    if (queue.length >= 50) flush();
   };
-  console.log=wrap('info',console.log.bind(console));
-  console.warn=wrap('warn',console.warn.bind(console));
-  console.error=wrap('error',console.error.bind(console));
-  setInterval(flush,3000).unref();
-  process.on('beforeExit',flush); process.on('SIGTERM',flush);
+
+  const _log = console.log.bind(console);
+  const _warn = console.warn.bind(console);
+  const _error = console.error.bind(console);
+  console.log = (...a) => { _log(...a); enqueue('info', a); };
+  console.warn = (...a) => { _warn(...a); enqueue('warn', a); };
+  console.error = (...a) => { _error(...a); enqueue('error', a); };
+
+  process.on('beforeExit', flush);
+  process.on('SIGTERM', () => flush().finally(() => process.exit(0)));
 })();
-// ── End snippet ────────────────────────────────────────────────────────────
+// ── End Parseable snippet ─────────────────────────────────────────────────
 ```
 
 **Python — stdlib only** (drop at top of `main.py`):

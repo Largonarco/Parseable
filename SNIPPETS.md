@@ -325,7 +325,7 @@ class ParseableMiddleware(BaseHTTPMiddleware):
 To use S3-compatible storage (AWS S3, Backblaze B2, DigitalOcean Spaces, MinIO):
 
 1. Remove the Volume from the Parseable service
-2. Change the start command to `parseable server s3-store`
+2. Change the start command to `/usr/bin/parseable s3-store`
 3. Add these variables to the Parseable service:
 
 ```

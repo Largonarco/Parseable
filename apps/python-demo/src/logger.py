@@ -198,7 +198,7 @@ class ParseableLogger:
 
         return _Handler()
 
-    def asgi_middleware(self):
+    def asgi_middleware(self, ignore_paths=None):
         """
         Returns an ASGI middleware class for FastAPI / Starlette that logs all HTTP requests.
 
@@ -206,14 +206,21 @@ class ParseableLogger:
             from src.logger import parseable_logger
             app.add_middleware(parseable_logger.asgi_middleware())
 
+        Pass ``ignore_paths`` (a set of path strings) to suppress logging for
+        specific routes — e.g. health checks that Railway hits continuously::
+
+            app.add_middleware(parseable_logger.asgi_middleware(ignore_paths={"/health", "/readyz"}))
+
         Note: this method returns the middleware *class* (not an instance), which is
         exactly what Starlette's add_middleware() expects.
         """
         logger_self = self
+        _ignore = ignore_paths if ignore_paths is not None else {"/health"}
 
         class _ParseableMiddleware:
             def __init__(self, app):
                 self.app = app
+                self.ignore_paths = _ignore
 
             async def __call__(self, scope, receive, send):
                 if scope["type"] != "http":
@@ -241,14 +248,15 @@ class ParseableLogger:
                     path = scope.get("path", "/")
                     method = scope.get("method", "GET")
 
-                    logger_self.info(
-                        f"{method} {path} {status_code}",
-                        method=method,
-                        path=path,
-                        status_code=status_code,
-                        duration_ms=duration_ms,
-                        type="http_request",
-                    )
+                    if path not in self.ignore_paths:
+                        logger_self.info(
+                            f"{method} {path} {status_code}",
+                            method=method,
+                            path=path,
+                            status_code=status_code,
+                            duration_ms=duration_ms,
+                            type="http_request",
+                        )
 
         return _ParseableMiddleware
 
