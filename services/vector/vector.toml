@@ -56,8 +56,8 @@ if !exists(.timestamp) {
 '''
 
 # HTTP Sink - ship to Parseable with batching and compression
-# codec = "json" sends each event as a single JSON object per request,
-# which Parseable's /api/v1/ingest endpoint accepts natively.
+# codec = "json" sends each event as a JSON object. With batching enabled,
+# Vector sends newline-delimited JSON which Parseable accepts natively.
 [sinks.parseable]
 type = "http"
 method = "post"
@@ -67,7 +67,7 @@ uri = "${PARSEABLE_URL}/api/v1/ingest"
 compression = "gzip"
 
 [sinks.parseable.encoding]
-codec = "json_array"
+codec = "json"
 
 [sinks.parseable.batch]
 max_bytes = 10485760
