@@ -1,6 +1,6 @@
 # Parseable on Railway
 
-[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/template/parseable-railway)
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/1eCCDv?referralCode=XB0mqZ&utm_medium=integration&utm_source=template&utm_campaign=generic)
 
 A production-ready Railway template that deploys **Parseable** (a modern observability platform) with a **Vector** log aggregation service — giving any Railway-hosted application structured, searchable, long-term log storage with an AI-native dashboard.
 
@@ -40,7 +40,7 @@ Your App(s)
 Click the button above, or navigate to:
 
 ```
-https://railway.app/template/parseable-railway
+https://railway.com/deploy/1eCCDv?referralCode=XB0mqZ&utm_medium=integration&utm_source=template&utm_campaign=generic
 ```
 
 Railway will provision all three services with pre-configured networking and auto-generated credentials.
